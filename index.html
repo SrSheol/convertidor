@@ -243,6 +243,26 @@
   .copy.done .ok { display: block; }
   .copy.done .cp { display: none; }
 
+  .splits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label copy" "value value";
+    align-items: center;
+    gap: .35rem .5rem;
+    padding: .6rem .6rem .7rem .8rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .split-label { grid-area: label; font: 700 1.25rem/1 var(--display); color: var(--muted); }
+  .split-value {
+    grid-area: value;
+    min-height: 1.15em;
+    font: 600 1.6rem/1.15 var(--display);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
   .opts { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin: 1.25rem 0 0; padding: 0; border: 0; }
   .opts legend { float: left; margin-right: .25rem; padding: 0; font-size: .95rem; color: var(--muted); }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
@@ -304,6 +324,8 @@
     .field { grid-template-columns: 4.75rem minmax(0, 1fr) auto; column-gap: .6rem; padding-left: .8rem; }
     .unit { font-size: 1.5rem; }
     .unit-name { font-size: .8rem; }
+    .splits { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+    .split { grid-template-columns: 2.5rem minmax(0, 1fr) auto; grid-template-areas: "label value copy"; column-gap: .75rem; }
     th, td { padding-inline: .35rem; font-size: .95rem; }
   }
 
@@ -380,6 +402,33 @@
             <p class="err" id="err-kgf"></p>
           </li>
         </ul>
+
+        <div class="splits">
+          <div class="split">
+            <label class="split-label" for="out-d3">3</label>
+            <output class="split-value" id="out-d3" aria-live="off"></output>
+            <button type="button" class="copy" data-copy="d3" aria-label="Copiar resultado de 3">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+          </div>
+          <div class="split">
+            <label class="split-label" for="out-d35">3.5</label>
+            <output class="split-value" id="out-d35" aria-live="off"></output>
+            <button type="button" class="copy" data-copy="d35" aria-label="Copiar resultado de 3.5">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+          </div>
+          <div class="split">
+            <label class="split-label" for="out-d4">4</label>
+            <output class="split-value" id="out-d4" aria-live="off"></output>
+            <button type="button" class="copy" data-copy="d4" aria-label="Copiar resultado de 4">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+          </div>
+        </div>
 
         <fieldset class="opts">
           <legend>Separador decimal</legend>
@@ -591,6 +640,7 @@
   var lastBase = null;
   function updateGauge(base) {
     lastBase = base;
+    updateSplits(base);
     var unit = UNITS[activeKey];
     if (base === null) {
       if (currentRange === null) buildScales(1);
@@ -621,6 +671,23 @@
   var copyBtns = document.querySelectorAll('.copy');
   var activeKey = 'mpa';
 
+  // Resultados de solo lectura: el valor en kg/cm² (sin redondear) dividido entre 3, 3,5 y 4.
+  var SPLITS = {
+    d3:  { divisor: 3,   label: 'kg/cm² entre 3' },
+    d35: { divisor: 3.5, label: 'kg/cm² entre 3,5' },
+    d4:  { divisor: 4,   label: 'kg/cm² entre 4' }
+  };
+  Object.keys(SPLITS).forEach(function (k) { SPLITS[k].out = document.getElementById('out-' + k); });
+  function updateSplits(base) {
+    var kgf = base === null ? null : UNITS.kgf.fromBase(base);
+    Object.keys(SPLITS).forEach(function (k) {
+      SPLITS[k].out.textContent = kgf === null ? '' : format(kgf / SPLITS[k].divisor);
+    });
+  }
+  function copySource(k) {
+    return UNITS[k] ? { text: inputs[k].value.trim(), label: UNITS[k].label } : { text: SPLITS[k].out.textContent.trim(), label: SPLITS[k].label };
+  }
+
   var MESSAGES = {
     format: 'Escribe solo números, por ejemplo 2,5 o 2.5.',
     negative: 'Escribe un valor de 0 o mayor.'
@@ -632,7 +699,10 @@
   }
   function clearError(k) { errs[k].textContent = ''; inputs[k].removeAttribute('aria-invalid'); }
   function syncCopyButtons() {
-    copyBtns.forEach(function (b) { b.disabled = inputs[b.getAttribute('data-copy')].value.trim() === '' || inputs[b.getAttribute('data-copy')].getAttribute('aria-invalid') === 'true'; });
+    copyBtns.forEach(function (b) {
+      var k = b.getAttribute('data-copy');
+      b.disabled = copySource(k).text === '' || (UNITS[k] && inputs[k].getAttribute('aria-invalid') === 'true');
+    });
   }
 
   function fillOthers(base, except) {
@@ -695,12 +765,12 @@
   copyBtns.forEach(function (btn) {
     var timer;
     btn.addEventListener('click', function () {
-      var k = btn.getAttribute('data-copy');
-      var text = inputs[k].value.trim();
+      var src = copySource(btn.getAttribute('data-copy'));
+      var text = src.text;
       if (!text) return;
       copyText(text).then(function () {
         btn.classList.add('done');
-        announce('Copiado: ' + text + ' ' + UNITS[k].label);
+        announce('Copiado: ' + text + ' ' + src.label);
         clearTimeout(timer);
         timer = setTimeout(function () { btn.classList.remove('done'); }, 1600);
       }, function () {
@@ -791,6 +861,7 @@
   setActive('mpa');
   inputs.mpa.value = format(1);
   fillOthers(1, 'mpa');
+  updateSplits(1);
   syncCopyButtons();
   buildScales(1.6);
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
