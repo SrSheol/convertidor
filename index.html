@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convertidor de presión: MPa, psi y kg/cm²</title>
+<meta name="description" content="Convierte presión entre MPa, psi y kg/cm² al instante, con un manómetro que marca el valor.">
+<meta name="theme-color" content="#DCE1E5">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23EEF1F3' stroke='%2316202A' stroke-width='3'/%3E%3Cpath d='M16 16 L24 8' stroke='%23C81D25' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2316202A'/%3E%3C/svg%3E">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('presion-tema');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #DCE1E5;
+    --bg-2: #CBD3D9;
+    --surface: #EEF1F3;
+    --tint: rgba(22, 32, 42, 0.05);
+    --ink: #16202A;
+    --muted: #4A5866;
+    --line: #AEB8C1;
+    --accent: #C81D25;
+    --face: #FBFCFC;
+    --face-ink: #16202A;
+    --well: #E2E7EB;
+    --needle-shadow: rgba(22, 32, 42, 0.35);
+    --bezel: conic-gradient(from 210deg, #8E99A3, #F2F4F6 12%, #A3ADB6 28%, #E4E8EB 45%, #7F8A94 62%, #EEF1F3 78%, #8E99A3);
+    --bezel-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 30px 60px -20px rgba(22,32,42,.45), 0 8px 18px -8px rgba(22,32,42,.35);
+
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --body: "Barlow", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0E151C;
+      --bg-2: #121C26;
+      --surface: #16212B;
+      --tint: rgba(228, 235, 240, 0.05);
+      --ink: #E4EBF0;
+      --muted: #9AAAB8;
+      --line: #2E3C49;
+      --accent: #FF5F52;
+      --face: #0F1922;
+      --face-ink: #DDEBE4;
+      --well: #091016;
+      --needle-shadow: rgba(0, 0, 0, 0.6);
+      --bezel: conic-gradient(from 210deg, #2B3540, #6B7783 12%, #26303A 28%, #56626E 45%, #1F2830 62%, #5E6A76 78%, #2B3540);
+      --bezel-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 30px 60px -20px rgba(0,0,0,.7), 0 8px 18px -8px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0E151C;
+    --bg-2: #121C26;
+    --surface: #16212B;
+    --tint: rgba(228, 235, 240, 0.05);
+    --ink: #E4EBF0;
+    --muted: #9AAAB8;
+    --line: #2E3C49;
+    --accent: #FF5F52;
+    --face: #0F1922;
+    --face-ink: #DDEBE4;
+    --well: #091016;
+    --needle-shadow: rgba(0, 0, 0, 0.6);
+    --bezel: conic-gradient(from 210deg, #2B3540, #6B7783 12%, #26303A 28%, #56626E 45%, #1F2830 62%, #5E6A76 78%, #2B3540);
+    --bezel-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 30px 60px -20px rgba(0,0,0,.7), 0 8px 18px -8px rgba(0,0,0,.6);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg) linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%) fixed;
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .vh {
+    position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+
+  /* ---------- Cabecera ---------- */
+  .top {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    padding-top: clamp(1.25rem, 4vw, 3rem);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.5rem, 7vw, 4.75rem);
+    line-height: .92;
+    letter-spacing: -0.015em;
+  }
+  .lead { margin: .75rem 0 0; color: var(--muted); max-width: 38ch; }
+
+  .theme {
+    flex: none;
+    width: 48px; height: 48px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition: background-color .2s, border-color .2s;
+  }
+  .theme:hover { border-color: var(--ink); }
+  .theme svg { width: 22px; height: 22px; }
+  .theme .moon { display: none; }
+  [data-effective="dark"] .theme .sun { display: none; }
+  [data-effective="dark"] .theme .moon { display: block; }
+
+  /* ---------- Escenario: manómetro + campos ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+    padding-block: clamp(1.5rem, 4vw, 3.5rem) clamp(2.5rem, 6vw, 5rem);
+  }
+
+  .dial { margin: 0; justify-self: center; width: min(100%, 470px); }
+  .bezel {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    padding: 4.2%;
+    background: var(--bezel);
+    box-shadow: var(--bezel-shadow);
+  }
+  .bezel::before {
+    content: ""; position: absolute; inset: 3.4%; border-radius: 50%;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,.35);
+    pointer-events: none; z-index: 1;
+  }
+  .bezel::after {
+    content: ""; position: absolute; inset: 4.2%; border-radius: 50%;
+    background: linear-gradient(155deg, rgba(255,255,255,.32) 0%, rgba(255,255,255,.06) 38%, transparent 39%);
+    pointer-events: none; z-index: 2;
+  }
+  .gauge { display: block; width: 100%; height: 100%; border-radius: 50%; }
+  .gauge .face { fill: var(--face); }
+  .gauge .ring { fill: none; stroke: var(--face-ink); stroke-width: 1.5; }
+  .gauge .t-maj { stroke: var(--face-ink); stroke-width: 2.6; }
+  .gauge .t-min { stroke: var(--face-ink); stroke-width: 1.1; }
+  .gauge .p-maj { stroke: var(--accent); stroke-width: 2; }
+  .gauge .p-min { stroke: var(--accent); stroke-width: 1; }
+  .gauge .l-mpa { fill: var(--face-ink); font: 600 17px var(--display); }
+  .gauge .l-psi { fill: var(--accent); font: 600 12.5px var(--display); }
+  .gauge .name-mpa { fill: var(--face-ink); font: 700 20px var(--display); }
+  .gauge .name-psi { fill: var(--accent); font: 700 15px var(--display); }
+  .gauge .range { fill: var(--face-ink); opacity: .7; font: 500 12px var(--body); }
+  .gauge .well { fill: var(--well); stroke: var(--face-ink); stroke-opacity: .25; }
+  .gauge .readout { fill: var(--face-ink); font: 600 26px var(--display); font-variant-numeric: tabular-nums; }
+  .gauge .readout.over { fill: var(--accent); }
+  .gauge .readout .ru { font-size: .62em; font-weight: 500; }
+  .gauge .hub { fill: var(--face-ink); }
+  .gauge .hub-cap { fill: var(--accent); }
+  .gauge .needle {
+    fill: var(--accent);
+    transform-box: view-box;
+    transform-origin: 200px 200px;
+    transition: transform .7s cubic-bezier(.3, 1.45, .5, 1);
+    filter: drop-shadow(2px 4px 3px var(--needle-shadow));
+  }
+  .gauge .needle.sweep { transition-duration: 1s; transition-timing-function: cubic-bezier(.45, 0, .2, 1); }
+  .gauge .scale { animation: fade .35s ease-out; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---------- Campos ---------- */
+  .panel { min-width: 0; }
+  .fields { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--ink); }
+  .field {
+    position: relative;
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+    grid-template-areas: "unit input copy" "unit err err";
+    align-items: center;
+    column-gap: 1rem;
+    padding: .9rem .25rem .9rem 1rem;
+    border-bottom: 1px solid var(--line);
+    transition: background-color .2s;
+  }
+  .field::before {
+    content: ""; position: absolute; left: 0; top: .9rem; bottom: .9rem; width: 4px;
+    border-radius: 2px; background: var(--accent);
+    transform: scaleY(0); transition: transform .25s ease-out;
+  }
+  .field.is-active::before { transform: scaleY(1); }
+  .field:focus-within { background: var(--tint); }
+  .field label { grid-area: unit; align-self: center; cursor: pointer; }
+  .unit { display: block; font: 700 1.75rem/1 var(--display); }
+  .unit-name { display: block; margin-top: .25rem; font-size: .875rem; color: var(--muted); line-height: 1.25; }
+  .field input {
+    grid-area: input;
+    width: 100%; min-width: 0;
+    margin: 0; padding: .1em .2em;
+    border: 0; border-radius: 6px;
+    background: transparent;
+    color: var(--ink);
+    font: 600 clamp(2.1rem, 5vw, 3.1rem)/1.15 var(--display);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .field input::placeholder { color: var(--muted); opacity: .45; }
+  .field input:focus-visible { outline-offset: 2px; }
+  .field input[aria-invalid="true"] { color: var(--accent); }
+  .err { grid-area: err; margin: .35rem 0 0; font-size: .9rem; color: var(--accent); text-align: right; }
+  .err:empty { display: none; }
+
+  .copy {
+    grid-area: copy;
+    width: 44px; height: 44px;
+    display: grid; place-items: center;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: transparent; color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background-color .15s;
+  }
+  .copy:hover:not(:disabled) { color: var(--ink); border-color: var(--ink); }
+  .copy:disabled { opacity: .35; cursor: not-allowed; }
+  .copy svg { width: 20px; height: 20px; }
+  .copy .ok { display: none; }
+  .copy.done { color: var(--accent); border-color: var(--accent); }
+  .copy.done .ok { display: block; }
+  .copy.done .cp { display: none; }
+
+  .opts { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin: 1.25rem 0 0; padding: 0; border: 0; }
+  .opts legend { float: left; margin-right: .25rem; padding: 0; font-size: .95rem; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg label { position: relative; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg span {
+    display: block; padding: .3rem .9rem; border-radius: 999px;
+    font-size: .95rem; color: var(--muted);
+    transition: background-color .15s, color .15s;
+  }
+  .seg input:checked + span { background: var(--ink); color: var(--bg); }
+  .seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Referencias y notas ---------- */
+  .lower {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    padding-block: clamp(2rem, 5vw, 3.5rem);
+    border-top: 2px solid var(--ink);
+  }
+  h2 { margin: 0 0 .4rem; font: 700 clamp(1.75rem, 3.5vw, 2.25rem)/1.05 var(--display); }
+  .hint { margin: 0 0 1.25rem; color: var(--muted); font-size: .95rem; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: .6rem .5rem; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; white-space: normal; }
+  thead th { font-weight: 600; font-size: .9rem; color: var(--muted); border-bottom: 2px solid var(--line); }
+  td { color: var(--muted); }
+  td.nominal { color: var(--ink); font-weight: 600; }
+  tbody tr { transition: background-color .15s; }
+  tbody tr:hover { background: var(--tint); }
+  .load {
+    padding: .15rem 0; border: 0; background: none;
+    color: var(--ink); font: inherit; font-weight: 500; text-align: left;
+    cursor: pointer;
+    text-decoration: underline; text-decoration-color: var(--line);
+    text-underline-offset: .2em; text-decoration-thickness: 1px;
+  }
+  .load:hover { text-decoration-color: var(--accent); }
+
+  .units { margin: 0; }
+  .units dt { font: 700 1.35rem/1.1 var(--display); margin-top: 1.1rem; }
+  .units dt:first-child { margin-top: 0; }
+  .units dd { margin: .25rem 0 0; color: var(--muted); font-size: .975rem; max-width: 46ch; }
+  .units dd strong { color: var(--ink); font-weight: 600; }
+  .aside-note { margin: 1.4rem 0 0; padding-left: .9rem; border-left: 3px solid var(--accent); font-size: .95rem; color: var(--muted); max-width: 46ch; }
+
+  footer { padding-block: 1.5rem 2.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+  footer p { margin: 0; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .stage, .lower { grid-template-columns: minmax(0, 1fr); }
+    .dial { width: min(86vw, 400px); }
+  }
+  @media (max-width: 480px) {
+    body { font-size: 1rem; }
+    .field { grid-template-columns: 4.75rem minmax(0, 1fr) auto; column-gap: .6rem; padding-left: .8rem; }
+    .unit { font-size: 1.5rem; }
+    .unit-name { font-size: .8rem; }
+    th, td { padding-inline: .35rem; font-size: .95rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Convertidor de presión</h1>
+      <p class="lead">Escribe un valor en MPa, psi o kg/cm² y los otros dos se actualizan al instante.</p>
+    </div>
+    <button type="button" class="theme" id="theme" aria-label="Activar modo oscuro">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Conversor">
+      <figure class="dial">
+        <div class="bezel">
+          <svg class="gauge" id="gauge" viewBox="0 0 400 400" role="img" aria-labelledby="gauge-title">
+            <title id="gauge-title">Manómetro sin valor</title>
+            <circle class="face" cx="200" cy="200" r="200"/>
+            <path class="ring" id="ring-mpa"/>
+            <path class="ring" id="ring-psi" style="stroke: var(--accent); stroke-width: 1"/>
+            <g id="scale-mpa"></g>
+            <g id="scale-psi"></g>
+            <text class="name-mpa" x="200" y="132" text-anchor="middle">MPa</text>
+            <text class="name-psi" x="200" y="152" text-anchor="middle">psi</text>
+            <text class="range" id="range" x="200" y="252" text-anchor="middle"></text>
+            <rect class="well" x="138" y="292" width="124" height="44" rx="6"/>
+            <text class="readout" id="readout" x="200" y="315" text-anchor="middle" dominant-baseline="central">—</text>
+            <g class="needle" id="needle" style="transform: rotate(-135deg)">
+              <path d="M200 36 L204.6 200 L203.2 228 L196.8 228 L195.4 200 Z"/>
+            </g>
+            <circle class="hub" cx="200" cy="200" r="14"/>
+            <circle class="hub-cap" cx="200" cy="200" r="5"/>
+          </svg>
+        </div>
+      </figure>
+
+      <div class="panel">
+        <ul class="fields">
+          <li class="field" data-unit="mpa">
+            <label for="in-mpa"><span class="unit">MPa</span><span class="unit-name">megapascales</span></label>
+            <input id="in-mpa" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="20" placeholder="0" aria-describedby="err-mpa">
+            <button type="button" class="copy" data-copy="mpa" aria-label="Copiar valor en MPa">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+            <p class="err" id="err-mpa"></p>
+          </li>
+          <li class="field" data-unit="psi">
+            <label for="in-psi"><span class="unit">psi</span><span class="unit-name">libras por pulgada²</span></label>
+            <input id="in-psi" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="20" placeholder="0" aria-describedby="err-psi">
+            <button type="button" class="copy" data-copy="psi" aria-label="Copiar valor en psi">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+            <p class="err" id="err-psi"></p>
+          </li>
+          <li class="field" data-unit="kgf">
+            <label for="in-kgf"><span class="unit">kg/cm²</span><span class="unit-name">kilogramo-fuerza por cm²</span></label>
+            <input id="in-kgf" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="20" placeholder="0" aria-describedby="err-kgf">
+            <button type="button" class="copy" data-copy="kgf" aria-label="Copiar valor en kg/cm²">
+              <svg class="cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+              <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+            </button>
+            <p class="err" id="err-kgf"></p>
+          </li>
+        </ul>
+
+        <fieldset class="opts">
+          <legend>Separador decimal</legend>
+          <div class="seg">
+            <label><input type="radio" name="sep" value=","><span>Coma (1,5)</span></label>
+            <label><input type="radio" name="sep" value="."><span>Punto (1.5)</span></label>
+          </div>
+        </fieldset>
+        <p class="vh" id="status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <div class="lower">
+      <section aria-labelledby="ref-title">
+        <h2 id="ref-title">Valores de referencia</h2>
+        <p class="hint">Pulsa un uso para cargarlo en el conversor. En negrita, el valor habitual con el que se especifica.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="ref-title">
+          <table>
+            <thead>
+              <tr><th scope="col">Uso típico</th><th scope="col">MPa</th><th scope="col">psi</th><th scope="col">kg/cm²</th></tr>
+            </thead>
+            <tbody id="ref-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="units-title">
+        <h2 id="units-title">Sobre las unidades</h2>
+        <dl class="units">
+          <dt>MPa</dt>
+          <dd>Megapascal, unidad del Sistema Internacional. <strong>1 MPa = 1 N/mm²</strong>, un millón de pascales. Es la habitual en fichas técnicas e ingeniería.</dd>
+          <dt>psi</dt>
+          <dd>Libra-fuerza por pulgada cuadrada. Se usa en neumáticos, compresores y en equipos de origen estadounidense.</dd>
+          <dt>kg/cm²</dt>
+          <dd>Kilogramo-fuerza por centímetro cuadrado (kgf/cm²), la «atmósfera técnica». Equivale a <strong>0,980665 bar</strong>, así que en la práctica se lee casi igual que un bar.</dd>
+        </dl>
+        <p class="aside-note">Los manómetros suelen marcar presión relativa, es decir, por encima de la atmosférica. La conversión es la misma para presión relativa y absoluta.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>Factores usados: 1 MPa = 145,0377377 psi = 10,19716213 kg/cm². Todo se calcula desde MPa para evitar errores de redondeo acumulados.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Conversión: todo pasa por MPa ---------- */
+  var PSI_PER_MPA = 145.0377377;
+  var KGF_PER_MPA = 10.19716213;
+  var UNITS = {
+    mpa: { label: 'MPa',    toBase: function (v) { return v; },               fromBase: function (b) { return b; } },
+    psi: { label: 'psi',    toBase: function (v) { return v / PSI_PER_MPA; }, fromBase: function (b) { return b * PSI_PER_MPA; } },
+    kgf: { label: 'kg/cm²', toBase: function (v) { return v / KGF_PER_MPA; }, fromBase: function (b) { return b * KGF_PER_MPA; } }
+  };
+  var KEYS = ['mpa', 'psi', 'kgf'];
+
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ---------- Separador decimal ---------- */
+  function localeSeparator() {
+    try {
+      var parts = new Intl.NumberFormat(navigator.language || 'es').formatToParts(1.5);
+      for (var i = 0; i < parts.length; i++) if (parts[i].type === 'decimal') return parts[i].value === '.' ? '.' : ',';
+    } catch (e) {}
+    return ',';
+  }
+  var sep = store.get('presion-separador');
+  if (sep !== ',' && sep !== '.') sep = localeSeparator();
+
+  /* ---------- Lectura y formato de números ---------- */
+  // Acepta "1,5", "1.5", "1.234,5", "1,234.5" y espacios como separador de miles.
+  function parse(raw) {
+    var s = raw.trim().replace(/[\s  ']/g, '');
+    if (s === '') return { empty: true };
+    var neg = false;
+    if (s[0] === '+') s = s.slice(1);
+    else if (s[0] === '-' || s[0] === '−') { neg = true; s = s.slice(1); }
+    if (neg) return /^[\d.,]*$/.test(s) && /^[0.,]+$/.test(s) ? { value: 0 } : { error: 'negative' };
+    if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return { error: 'format' };
+
+    var commas = (s.match(/,/g) || []).length;
+    var periods = (s.match(/\./g) || []).length;
+    var dec = null;
+    if (commas && periods) dec = s.lastIndexOf(',') > s.lastIndexOf('.') ? ',' : '.';
+    else if (commas === 1) dec = ',';
+    else if (periods === 1) dec = '.';
+    var thou = dec === ',' ? '.' : dec === '.' ? ',' : (commas ? ',' : '.');
+
+    var pieces = dec ? s.split(dec) : [s];
+    if (pieces.length > 2) return { error: 'format' };
+    var groups = pieces[0].split(thou);
+    if (groups.length > 1 && (groups[0].length < 1 || groups[0].length > 3 || groups.slice(1).some(function (g) { return g.length !== 3; }))) {
+      return { error: 'format' };
+    }
+    if (pieces[1] !== undefined && pieces[1].indexOf(thou) !== -1) return { error: 'format' };
+
+    var v = Number(groups.join('') + (pieces[1] !== undefined ? '.' + pieces[1] : ''));
+    if (!isFinite(v)) return { error: 'format' };
+    return { value: v };
+  }
+
+  var fmtFixed = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4, useGrouping: false });
+  var fmtSig = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 4, useGrouping: false });
+  function format(v) {
+    if (v === 0) return '0';
+    var s = fmtFixed.format(v);
+    if (s === '0') s = fmtSig.format(v); // valores diminutos: 4 cifras significativas
+    return sep === ',' ? s.replace('.', ',') : s;
+  }
+
+  /* ---------- Manómetro ---------- */
+  var CX = 200, CY = 200, A0 = -135, SWEEP = 270;
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var gaugeEl = document.getElementById('gauge');
+  var needle = document.getElementById('needle');
+  var readout = document.getElementById('readout');
+  var rangeEl = document.getElementById('range');
+  var gaugeTitle = document.getElementById('gauge-title');
+  var scaleMpa = document.getElementById('scale-mpa');
+  var scalePsi = document.getElementById('scale-psi');
+
+  // Escalas normalizadas de manómetros (serie 1 – 1,6 – 2,5 – 4 – 6).
+  var RANGES = [];
+  [0.1, 1, 10, 100, 1000].forEach(function (p) {
+    [1, 1.6, 2.5, 4, 6].forEach(function (m) { var r = +(m * p).toPrecision(3); if (r <= 1000) RANGES.push(r); });
+  });
+  var DIVISIONS = { '1': [10, 5], '1.6': [8, 4], '2.5': [5, 5], '4': [8, 5], '6': [6, 5] };
+
+  function polar(r, f) {
+    var a = (A0 + SWEEP * f) * Math.PI / 180;
+    return [CX + r * Math.sin(a), CY - r * Math.cos(a)];
+  }
+  function arc(r) {
+    var p0 = polar(r, 0), p1 = polar(r, 1);
+    return 'M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A' + r + ' ' + r + ' 0 1 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2);
+  }
+  function line(r1, r2, f, cls) {
+    var a = polar(r1, f), b = polar(r2, f);
+    return '<line class="' + cls + '" x1="' + a[0].toFixed(2) + '" y1="' + a[1].toFixed(2) + '" x2="' + b[0].toFixed(2) + '" y2="' + b[1].toFixed(2) + '"/>';
+  }
+  function label(r, f, text, cls) {
+    var p = polar(r, f);
+    return '<text class="' + cls + '" x="' + p[0].toFixed(2) + '" y="' + p[1].toFixed(2) + '" text-anchor="middle" dominant-baseline="central">' + text + '</text>';
+  }
+  // Dibuja una escala de 0 a max con marcas principales cada `step` y `minorPer` subdivisiones.
+  function drawScale(max, step, minorPer, o) {
+    var out = '';
+    var minor = step / minorPer;
+    var count = Math.floor(max / minor + 1e-6);
+    for (var i = 0; i <= count; i++) {
+      var f = (i * minor) / max;
+      if (i % minorPer === 0) {
+        out += line(o.r, o.rMaj, f, o.cls + '-maj');
+        out += label(o.rLabel, f, format(+(i * minor).toPrecision(10)), o.lcls);
+      } else {
+        out += line(o.r, o.rMin, f, o.cls + '-min');
+      }
+    }
+    return out;
+  }
+  function niceStep(max, maxCount) {
+    var raw = max / maxCount;
+    var p = Math.pow(10, Math.floor(Math.log10(raw)));
+    var ms = [1, 2, 2.5, 5, 10];
+    for (var i = 0; i < ms.length; i++) if (ms[i] * p >= raw - 1e-12) return ms[i] * p;
+    return 10 * p;
+  }
+
+  var currentRange = null;
+  function buildScales(R) {
+    var mant = String(+(R / Math.pow(10, Math.floor(Math.log10(R) + 1e-9))).toPrecision(2));
+    var d = DIVISIONS[mant] || [10, 5];
+    scaleMpa.innerHTML = '<g class="scale">' + drawScale(R, R / d[0], d[1], { r: 172, rMaj: 156, rMin: 163, rLabel: 140, cls: 't', lcls: 'l-mpa' }) + '</g>';
+
+    var P = R * PSI_PER_MPA;
+    var s = niceStep(P, 7);
+    var mant2 = Math.round(s / Math.pow(10, Math.floor(Math.log10(s) + 1e-9)));
+    var per = mant2 === 2 ? 4 : 5;
+    scalePsi.innerHTML = '<g class="scale">' + drawScale(P, s, per, { r: 106, rMaj: 116, rMin: 111, rLabel: 92, cls: 'p', lcls: 'l-psi' }) + '</g>';
+    currentRange = R;
+  }
+  document.getElementById('ring-mpa').setAttribute('d', arc(172));
+  document.getElementById('ring-psi').setAttribute('d', arc(106));
+
+  function setNeedle(deg) { needle.style.transform = 'rotate(' + deg + 'deg)'; }
+
+  function setReadout(text, unitLabel, over) {
+    var len = text.length + 1 + unitLabel.length * 0.62;
+    var size = len <= 9 ? 26 : Math.max(11, 26 * 9 / len);
+    readout.style.fontSize = size + 'px';
+    readout.textContent = '';
+    readout.appendChild(document.createTextNode(text));
+    if (unitLabel) {
+      var t = document.createElementNS(svgNS, 'tspan');
+      t.setAttribute('class', 'ru');
+      t.textContent = ' ' + unitLabel;
+      readout.appendChild(t);
+    }
+    readout.classList.toggle('over', !!over);
+  }
+
+  var lastBase = null;
+  function updateGauge(base) {
+    lastBase = base;
+    var unit = UNITS[activeKey];
+    if (base === null) {
+      if (currentRange === null) buildScales(1);
+      setNeedle(A0);
+      setReadout('—', '', false);
+      rangeEl.textContent = 'Escala 0–' + format(currentRange) + ' MPa';
+      gaugeTitle.textContent = 'Manómetro sin valor';
+      return;
+    }
+    // Como en la práctica, se elige la escala en la que el valor no pasa de 3/4 del fondo.
+    var R = RANGES[RANGES.length - 1];
+    for (var i = 0; i < RANGES.length; i++) { if (base <= RANGES[i] * 0.75 * (1 + 1e-9)) { R = RANGES[i]; break; } }
+    var over = base > R * (1 + 1e-9);
+    if (R !== currentRange) buildScales(R);
+    setNeedle(over ? A0 + SWEEP + 4 : A0 + SWEEP * (base / R));
+    setReadout(format(unit.fromBase(base)), unit.label, over);
+    rangeEl.textContent = over ? 'Fuera de escala, máx. ' + format(R) + ' MPa' : 'Escala 0–' + format(R) + ' MPa';
+    gaugeTitle.textContent = 'Manómetro: ' + format(unit.fromBase(base)) + ' ' + unit.label + ', escala de 0 a ' + format(R) + ' MPa';
+  }
+
+  /* ---------- Campos ---------- */
+  var inputs = {}, errs = {}, rows = {};
+  KEYS.forEach(function (k) {
+    inputs[k] = document.getElementById('in-' + k);
+    errs[k] = document.getElementById('err-' + k);
+    rows[k] = inputs[k].closest('.field');
+  });
+  var copyBtns = document.querySelectorAll('.copy');
+  var activeKey = 'mpa';
+
+  var MESSAGES = {
+    format: 'Escribe solo números, por ejemplo 2,5 o 2.5.',
+    negative: 'Escribe un valor de 0 o mayor.'
+  };
+
+  function setActive(k) {
+    activeKey = k;
+    KEYS.forEach(function (j) { rows[j].classList.toggle('is-active', j === k); });
+  }
+  function clearError(k) { errs[k].textContent = ''; inputs[k].removeAttribute('aria-invalid'); }
+  function syncCopyButtons() {
+    copyBtns.forEach(function (b) { b.disabled = inputs[b.getAttribute('data-copy')].value.trim() === '' || inputs[b.getAttribute('data-copy')].getAttribute('aria-invalid') === 'true'; });
+  }
+
+  function fillOthers(base, except) {
+    KEYS.forEach(function (j) {
+      if (j === except) return;
+      clearError(j);
+      inputs[j].value = base === null ? '' : format(UNITS[j].fromBase(base));
+    });
+  }
+
+  function onInput(k) {
+    setActive(k);
+    var r = parse(inputs[k].value);
+    if (r.empty) {
+      clearError(k);
+      fillOthers(null, k);
+      updateGauge(null);
+    } else if (r.error) {
+      errs[k].textContent = MESSAGES[r.error];
+      inputs[k].setAttribute('aria-invalid', 'true');
+      fillOthers(null, k);
+      updateGauge(null);
+    } else {
+      clearError(k);
+      var base = UNITS[k].toBase(r.value);
+      fillOthers(base, k);
+      updateGauge(base);
+    }
+    syncCopyButtons();
+  }
+
+  KEYS.forEach(function (k) {
+    inputs[k].addEventListener('input', function () { onInput(k); });
+    inputs[k].addEventListener('focus', function () { if (inputs[k].value !== '' && !errs[k].textContent) { setActive(k); if (lastBase !== null) updateGauge(lastBase); } });
+  });
+
+  function setAll(base, k) {
+    setActive(k);
+    clearError(k);
+    inputs[k].value = base === null ? '' : format(UNITS[k].fromBase(base));
+    fillOthers(base, k);
+    updateGauge(base);
+    syncCopyButtons();
+  }
+
+  /* ---------- Copiar ---------- */
+  var statusEl = document.getElementById('status');
+  function announce(msg) { statusEl.textContent = ''; setTimeout(function () { statusEl.textContent = msg; }, 30); }
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      ok ? resolve() : reject();
+    });
+  }
+  copyBtns.forEach(function (btn) {
+    var timer;
+    btn.addEventListener('click', function () {
+      var k = btn.getAttribute('data-copy');
+      var text = inputs[k].value.trim();
+      if (!text) return;
+      copyText(text).then(function () {
+        btn.classList.add('done');
+        announce('Copiado: ' + text + ' ' + UNITS[k].label);
+        clearTimeout(timer);
+        timer = setTimeout(function () { btn.classList.remove('done'); }, 1600);
+      }, function () {
+        announce('No se pudo copiar. Selecciona el valor y cópialo con el teclado.');
+      });
+    });
+  });
+
+  /* ---------- Separador ---------- */
+  var sepRadios = document.querySelectorAll('input[name="sep"]');
+  sepRadios.forEach(function (r) {
+    r.checked = r.value === sep;
+    r.addEventListener('change', function () {
+      if (!r.checked) return;
+      sep = r.value;
+      store.set('presion-separador', sep);
+      var R = currentRange; currentRange = null; buildScales(R);
+      if (lastBase !== null && !errs[activeKey].textContent) setAll(lastBase, activeKey);
+      else updateGauge(lastBase);
+    });
+  });
+
+  /* ---------- Tabla de referencia ---------- */
+  var REFS = [
+    { use: 'Olla a presión', unit: 'psi', value: 15 },
+    { use: 'Presión atmosférica a nivel del mar', unit: 'mpa', value: 0.101325 },
+    { use: 'Neumático de turismo', unit: 'psi', value: 32 },
+    { use: 'Red de aire comprimido de taller', unit: 'kgf', value: 7 },
+    { use: 'Hidrolimpiadora doméstica', unit: 'psi', value: 2000 },
+    { use: 'Sistema hidráulico industrial', unit: 'psi', value: 3000 },
+    { use: 'Botella de buceo', unit: 'mpa', value: 20 },
+    { use: 'Depósito de hidrógeno de un coche', unit: 'mpa', value: 70 },
+    { use: 'Corte por chorro de agua', unit: 'mpa', value: 400 }
+  ];
+  var refBody = document.getElementById('ref-body');
+  function buildRefs() {
+    refBody.innerHTML = '';
+    REFS.forEach(function (ref) {
+      var base = UNITS[ref.unit].toBase(ref.value);
+      var tr = document.createElement('tr');
+      var th = document.createElement('td');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'load';
+      btn.textContent = ref.use;
+      btn.setAttribute('aria-label', 'Cargar ' + ref.use + ': ' + format(ref.value) + ' ' + UNITS[ref.unit].label);
+      btn.addEventListener('click', function () {
+        setAll(base, ref.unit);
+        announce('Cargado: ' + format(ref.value) + ' ' + UNITS[ref.unit].label);
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.querySelector('.stage').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
+      th.appendChild(btn);
+      tr.appendChild(th);
+      KEYS.forEach(function (k) {
+        var td = document.createElement('td');
+        td.textContent = format(UNITS[k].fromBase(base));
+        if (k === ref.unit) td.className = 'nominal';
+        tr.appendChild(td);
+      });
+      refBody.appendChild(tr);
+    });
+  }
+  buildRefs();
+  sepRadios.forEach(function (r) { r.addEventListener('change', buildRefs); });
+
+  /* ---------- Tema ---------- */
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('theme');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  function effectiveTheme() { return root.getAttribute('data-theme') || (mq.matches ? 'dark' : 'light'); }
+  function reflectTheme() {
+    var t = effectiveTheme();
+    root.setAttribute('data-effective', t);
+    themeBtn.setAttribute('aria-label', t === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0E151C' : '#DCE1E5');
+  }
+  themeBtn.addEventListener('click', function () {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    store.set('presion-tema', next);
+    reflectTheme();
+  });
+  if (mq.addEventListener) mq.addEventListener('change', reflectTheme);
+  reflectTheme();
+
+  /* ---------- Arranque: prueba de aguja y valor inicial ---------- */
+  setActive('mpa');
+  inputs.mpa.value = format(1);
+  fillOthers(1, 'mpa');
+  syncCopyButtons();
+  buildScales(1.6);
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    updateGauge(1);
+  } else {
+    setReadout(format(1), 'MPa', false);
+    rangeEl.textContent = 'Escala 0–' + format(1.6) + ' MPa';
+    needle.classList.add('sweep');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        setNeedle(A0 + SWEEP);
+        setTimeout(function () {
+          needle.classList.remove('sweep');
+          if (lastBase === null && inputs.mpa.value === format(1) && activeKey === 'mpa') updateGauge(1);
+        }, 1000);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
